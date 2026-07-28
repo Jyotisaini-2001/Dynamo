@@ -1,0 +1,162 @@
+What a task is
+A task is a self-contained challenge that runs inside a Docker container. You author a few things, and together they let the benchmark score any agent deterministically:
+
+instruction.md - the only thing the agent sees at runtime. It states the problem, pins absolute paths, and lists success criteria the agent can verify on its own.
+solution/solve.sh - the golden reference solution. Keep the real logic in a helper (e.g. solution/solve.py) that solve.sh calls; write outputs to absolute /app paths.
+tests/ - test.sh plus test_outputs.py (pytest), which run after the agent finishes and score its output. pytest and its plugins are baked (pinned) into the single environment/Dockerfile; test.sh installs nothing. tests/ is added only at verify time and is not present during the agent run.
+environment/Dockerfile - the task's single image, built once and reused for both the agent run and the verifier run. It never contains the solution or the tests.
+task.toml - the machine-readable manifest: identity, environment limits, verifier mode, metadata.
+Harbor
+Harbor is the CLI you'll use throughout. It builds the single task image, runs it, and writes the reward. Point it at a task path: harbor run -p . --agent oracle (run from the task/ directory).
+
+How a task is scored
+The agent works in /app with only instruction.md and the seed files. When it stops, the verifier runs tests/test.sh, which runs pytest and writes reward.txt (1 or 0) and ctrf.json to /logs/verifier/. Two rules make that score trustworthy:
+
+The agent never sees the golden solution or the tests. They live in the repo for development and review, but baking them into the agent image invalidates the task.
+Success is measured from observable artifacts - files on disk, exit codes. Anything that lives only in stdout or vanishes when the run ends cannot be scored.
+From fork to pr
+The work is a loop, not a hand-off:
+
+Set up your environment: Docker, uv, Harbor, and fork your assigned task repo from handshake-project-dynamo. See Setup.
+Build the task on the submission branch through the workflow — author solve.sh, write the tests, build the Dockerfile, write instruction.md and task.toml.
+Calibrate locally with Harbor from the task/ directory. Both checks must pass: harbor run -p . --agent oracle scores reward 1.0, and harbor run -p . --agent nop scores reward < 1.0. Clear this bar before opening a PR.
+Open a pull request from your fork back to handshake-project-dynamo/<your-task-repo> and iterate on the automated feedback. See Submitting the PR.
+Who this guide is for
+Fellows working to create Terminal-Bench-style tasks. Read it end-to-end before writing any code, and use it as a reference between steps.
+
+Getting started
+Complete these three steps before you claim a task.
+
+1. Join the slack channels
+You'll receive an email invite to the Handshake AI Fellowship Slack workspace. Join and bookmark both channels:
+
+dynamo-tasking — a collaborative space to ask questions and engage with the community of fellows.
+dynamo-announcements — for announcements from the project team.
+2. Join project dynamo on the annotations platform
+You'll receive an email to join Project Dynamo. Click View Project, create a Handshake account if needed, then follow the steps to set up a Stripe account for payouts.
+
+Off-platform work
+The project runs mostly off-platform, but you need to join to link everything in the system.
+
+Open Annotations Platform
+
+3. Complete the project assessments
+Before starting, you'll complete:
+
+A 60–90 minute software engineering assessment that you must pass.
+4. Time tracking
+All time is tracked through the Handshake platform. Open your claimed task before you start working — this begins tracking. Don't leave it running while idle. The 8-hour cap per task covers all time on a task, including revisions. If your first pass is approaching 7 hours, flag it to the team.
+
+Overview of the task
+At a high level, authoring a task is a fork → branch → implement → push → PR loop against the upstream template repo. The commands below are the full shape of that loop - each step in this guide fills in the ... implement the task ... middle.
+
+gh repo fork handshake-project-dynamo/dynamo-<repo_id>-<domain> --clone
+cd dynamo-<repo_id>-<domain>/task
+git checkout -b submission
+#  ... implement the task (see below) ...
+git add -A && git commit -m "Task submission"
+git push -u origin submission
+gh pr create --repo handshake-project-dynamo/dynamo-<repo_id>-<domain> --fill
+
+Copy
+What each command does
+gh repo fork ... --clone - forks the template repo to your GitHub account and clones your fork locally. You always work from a fork, never directly on the upstream repo.
+cd dynamo-<repo_id>-<domain>/task - moves into the task/ directory inside the freshly cloned repo so the rest of the commands run in the right place.
+git checkout -b submission - creates a new branch named submission off the default branch. All your task work lives here; main stays clean.
+Implement the task - this is the bulk of the work covered by the rest of this guide: scaffold the repo, write solve.sh, the tests, the Dockerfile, instruction.md, and task.toml, then calibrate locally.
+git add -A && git commit ... - stages every file you touched and records the work as a commit on the submission branch.
+git push -u origin submission - pushes the branch to your fork on GitHub and sets it as the upstream so future git push calls just work.
+gh pr create --repo ... --fill - opens a pull request from your fork's submission branch into the upstream template repo, using your commit messages to fill the title and body.
+
+
+Roles & Progression
+Everyone starts as an Attempter writing tasks. Consistently strong work can promote you up a reviewer ladder; a drop in quality can move you back down. Here's how the roles fit together. (Pay, work limits, and internal ops aren't covered here.)
+
+Here's the progression — from where everyone starts, up to the top of the ladder:
+
+1
+Attempter — Attempt
+You author tasks. Quality tiers within this role: Under Review → Attempter → Unthrottled Attempter. If your quality drops, you move down to Under Review Attempter.
+
+2
+R1 Reviewer — Review 1
+First review of submitted tasks, in two tiers (Onboarding R1 → Unthrottled R1). Consistently strong, R2-aligned reviewing promotes you up. An Onboarding R1 reviewer whose quality slips can move back down to an Attempter role.
+
+3
+R2 Reviewer — Review 2
+Final review of tasks that R1 accepted — the top of the ladder.
+
+How a reviewer routes a task — accept, send back for revision, or reject to Holding-Rejection — is shown on the task pipeline.
+Task categories
+Every task is tagged with values from four controlled vocabularies: Category, Subcategory, Task Objective, and Artifact Type. The canonical labels live in .dynamo/diversity-taxonomy.toml in your task repo — that file is the source of truth, and every label is lowercase snake_case (e.g. implement, debug, codebase, configuration_file). The lists on this page are a browseable reference, not a separate vocabulary.
+
+Who sets what
+Category and Subcategory are pre-seeded by the Dynamo team when your task repo is created — you do not set or edit them.
+Task Objective and Artifact Type are the two fields you fill in. Both are arrays of one or more lowercase snake_case labels from .dynamo/diversity-taxonomy.toml; assign every label that genuinely applies. Tag the task's end goal and central artifacts — not the incidental tools, helper scripts, or files used along the way.
+Always pick the best-fit label(s). If nothing fits, ask in #project-dynamo before inventing a label. The free-form tags field has been removed.
+Category and subcategory (Pre-seeded — For reference only)
+The 16 top-level categories and their named subcategories. The Dynamo team assigns one category and one subcategory to your task when the repo is created; you do not pick these.
+
+#	Category	Subcategories
+1	Software Engineering	Feature implementation; Refactoring and code modernization; Testing and quality engineering; Compilers, interpreters, and programming languages; Porting and migration; Scripting and automation; Web, API, and networking software; Version control and repository operations
+2	Debugging and Repair	Runtime bug repair; Test failure repair; Build failure repair; Configuration repair; Performance debugging; Concurrency and synchronization debugging; Pipeline and orchestration debugging
+3	Build, Dependency, and Release Management	Build system configuration; Dependency and lockfile resolution; CI/CD pipelines; Container builds; Cross-compilation and platform targeting; Package publishing; Release artifacts
+4	Systems, Infrastructure, and Operations	OS, process, and service management; Users, permissions, and access control; Shell and environment configuration; Networking configuration; Containers and orchestration; Storage and filesystem administration; Scheduling and automation infrastructure; Logging, monitoring, and observability; Virtualization and emulation
+5	Data Processing and ETL	ETL pipelines; File format parsing and serialization; Tabular transformation; Text processing; Data validation; Streaming data processing; Geospatial data processing; Media data processing
+6	Data Querying and Databases	SQL querying; Analytical queries; Query optimization; Database administration; NoSQL and document stores; Graph and semantic queries
+7	Data Science and Reporting	Exploratory data analysis; Statistical analysis and inference; Time-series analysis; Experiment and metrics analysis; Data visualization; Notebook and report generation; Dataset preparation for analysis
+8	Machine Learning and AI	Model inference and prediction; Model evaluation and benchmarking; Feature engineering; NLP and language models; Computer vision; ML serving and deployment; Interpretability and model inspection; Unsupervised and representation learning
+9	Model Training and ML Infrastructure	Training loops; Fine-tuning; Reinforcement learning; Hyperparameter tuning; Data loading and training pipelines; Checkpointing and resumption; Distributed training; Evaluation infrastructure
+10	Security	Cryptography; Cryptanalysis; Authentication and authorization; Vulnerability analysis; Exploit and CTF tasks; Reverse engineering; Digital forensics; Network forensics; Security hardening
+11	Scientific Computing and Domain Science	Numerical methods; Differential equations and simulation; Physics and mechanics; Chemistry and materials workflows; Biology and bioinformatics; Signal processing; Statistical modeling; Optimization and operations research
+12	Mathematics and Formal Reasoning	Symbolic computation; Number theory and exact arithmetic; Computational linear algebra; Combinatorics and enumeration; Computational geometry; Algorithms and optimization theory; Formal verification
+13	Hardware, Embedded, and Low-Level Systems	GPU kernels and accelerators; Embedded and firmware; RTL and digital design; DSP and signal hardware; CAD and mechanical workflows; Low-level runtime and performance
+14	File and Media Operations	File search and filtering; Batch rename and organization; Archiving and compression; File format conversion; Text editing and manipulation; File permissions and metadata; Recovery and repair; Video processing; Audio and music processing; Image and design processing
+15	Games, Puzzles, and Interactive Simulation	Board and card games; Puzzle solving; Game AI and strategy; World simulation; Interactive text games; Rendering and graphics
+16	Regulated Knowledge Work and Business Operations	Finance and quantitative workflows; Business operations; Legal and compliance; Medical and clinical workflows; Personal-assistant productivity
+Task objective (18)
+Set task_objective in task.toml to an array of the labels that best describe the task's end goal. Multiple labels are allowed. Use the exact lowercase snake_case form as listed in .dynamo/diversity-taxonomy.toml (the source of truth).
+
+implement
+fix
+configure
+analyze
+transform
+validate
+optimize
+migrate
+refactor
+test
+debug
+build_or_package
+deploy_or_operate
+recover_or_repair_artifact
+generate
+compare_or_select
+secure_or_harden
+automate_workflow
+Artifact type (22)
+Set artifact_type in task.toml to an array of the labels that best describe the central artifacts. Multiple labels are allowed. Use the exact lowercase snake_case form as listed in .dynamo/diversity-taxonomy.toml (the source of truth).
+
+codebase
+single_script_or_program
+test_suite_or_benchmark
+build_system_or_package_metadata
+configuration_file
+shell_environment
+service_or_daemon
+container_or_virtual_environment
+database_or_structured_store
+dataset_or_tabular_file
+text_or_log_file
+document_or_report
+archive_or_compressed_artifact
+binary_executable_or_library
+media_artifact
+model_or_checkpoint
+hardware_or_firmware_artifact
+network_endpoint_or_protocol_artifact
+repository_history_or_version_control_state
+security_artifact
+mathematical_or_scientific_model
+generated_output_artifact

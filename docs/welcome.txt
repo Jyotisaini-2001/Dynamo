@@ -1,0 +1,88 @@
+Project Dynamo
+Project Dynamo is how fellows build tasks for Terminal-Bench 2 (TB2) - the second-generation benchmark for evaluating coding agents in real terminal environments. This site is the end-to-end reference for writing a task: the file structure every task repo needs, how to set up the tooling, and every step from scaffolding through a passing pull request.
+
+Keep it open alongside your task repo as you work.
+
+What you can earn
+You get paid two ways: an hourly base rate for the time you put in, received when you submit a task plus a bonus every time a task reaches Ready-to-Deliver (RTD). The bonus stacks on top of your hourly pay — so the faster you land approved tasks, the higher your effective hourly climbs.
+
+United States
+$10 / hr base
++ $120 per task at RTD
+UK · AUS · CANADA
+$8 / hr base
++ $100 per task at RTD
+India
+$5 / hr base
++ $80 per task at RTD
+LATAM
+$5 / hr base
++ $80 per task at RTD
+How the bonus stacks
+Every task that reaches RTD adds its bonus on top of the hours you logged. For example, a US fellow who delivers a task in 10 hours earns $100 base + a $120 RTD bonus = $220 for that task — an effective $22/hr. Hours are illustrative and vary by task; the point is that each delivered task pulls your effective rate well above the base.
+
+Before you get started
+This project requires experience using both GitHub and the Terminal.
+
+If you do not have experience with these tools, you're still welcome to attempt the assessment. Because this project is paid per approved task, your earnings will depend on both the quality of your work and the number of tasks that are approved.
+
+If you do not feel comfortable completing the assessment or participating in the project, select Support in the upper right corner of your Handshake AI dashboard to request removal.
+
+The task pipeline
+1
+Task attempt
+You author the task end-to-end on a submission branch of your forked task repo.
+
+2
+R1 - First human review
+A reviewer does one of three things: accepts the task (on to R2), sends it back for *revision, or — if it's irreparable — drops it to Holding-Rejection, in which case you start a new task.
+
+3
+R2 - Second human review
+A second reviewer confirms the task, or sends it back.
+
+4
+Bonus - Ready to deliver
+The task is accepted and the bonus stacks on your base rate.
+
+Expect a 36–72 hour1 turnaround to hear whether your task has reached Ready to Deliver (RTD)2.
+
+1.
+Measured from when you submit — plan around days, not minutes.
+
+2.
+RTD = accepted and bonus-eligible. The finish line for a task.
+
+Tasks may be sent from R1 or R2 back to the author for edits before they can be accepted. The task bonus stacks on the base rate, so the faster you land valid tasks, the higher your hourly rate climbs.
+
+Why the rate changed
+We increased the time allotted per task to account for the time it takes to run the pass@ evaluations and the other GitHub checks. With that larger time budget, the hourly rate has come down from its previous level to offset the longer time budget — and the acceptance bonus is unchanged.
+
+*Revise sent-back tasks before starting new ones
+If R1 or R2 sent tasks back to you for edits, revise those before picking up a new task. A task that has already cleared part of review is much closer to acceptance — and the bonus — than a brand-new one, so revisions are the higher-probability path to approval.
+
+The revision pipeline
+Approved at any review along the way? The task continues to Ready to deliver — the path below is only what happens if revisions run out.
+
+1
+Sent back — R1 or R2
+The reviewer returns your task with feedback on what to fix.
+
+2
+Revision 1
+You revise and it goes back for re-review.
+
+3
+Revision 2
+One more revision and re-review — this is your last attempt.
+
+4
+Holding-Rejection
+If it's still not approved after the second revision, the task is dropped and you start a new one.
+
+When a task goes to Holding-Rejection
+A task is moved to Holding-Rejection — stop working on it and start a new one — in either of the following situations:
+
+A reviewer determines the task is not salvageable during the initial review.
+The task is still not approved after two revisions, which is the maximum number of revisions allowed per task.
+If your task reaches the two-revision limit, it means both the R1 and R2 reviewers determined it is not salvageable. At that point, the estimated effort required to fix it exceeds 10 hours. Rather than continuing to invest time in that task, we recommend reviewing the instructions document, applying what you've learned, and picking a new task.

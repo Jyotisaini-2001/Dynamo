@@ -1,0 +1,252 @@
+Submitting the pr
+Your work ships as a pull request from your fork back to handshake-project-dynamo/<your-task-repo>. The PR contains the full task under task/: task.toml, instruction.md, solution/solve.sh, environment/Dockerfile, tests/test.sh, tests/test_outputs.py.
+
+Before you push
+Clear the final checklist. The hard gates: the oracle scores reward 1.0 and the nop agent scores reward < 1.0; and instruction.md ends with the "You have N seconds…" line (N = [agent].timeout_sec).
+
+Push and open the pr
+See Push and open the PR for the exact commands.
+
+What happens on your pr
+On every push, automated checks run and post their results as PR comments. Read each comment, fix what it flags, and push again — the checks re-run automatically. Your task is ready when the checks are green and the rubric verdict is PASS.
+
+1. Static checks
+Structural and formatting rules — paths, Dockerfile hygiene, dependency pinning, the single-verifier setup, and the instruction.md timeout line.
+Passes when all structural rules are satisfied.
+2. Rubric review
+An LLM grades the task against the Dynamo rubric and posts a per-criterion PASS/FAIL verdict, including that environment/Dockerfile pins its test dependencies for the reused verifier image.
+Passes when the verdict is PASS.
+3. Duplicate check
+Compares instruction.md against existing Terminal-Bench task sets.
+Passes when the task is novel — not a reworded or reskinned version of a benchmark task.
+4. Validation
+Builds the environment and runs the verifier against both the reference solution and doing nothing.
+Passes when the reference solution passes (oracle) and doing nothing fails (nop).
+5. Pre-check (Pass@2)
+A coding agent attempts the task twice.
+Passes when at least one of the two attempts is a valid failure — the task is plausibly hard enough to proceed to Pass@5.
+6. Automated Review
+A deep rubric review of the whole task, run after Pass@2 and before Pass@5. Posts a Verdict, Blocking Issues, and Advisory Notes — see Automated Review below.
+Passes when the verdict is PASS with no blocking issues.
+5a. Pass@2 Difficulty Suggestion
+Only if Pass@2 fails
+Posts a Root cause, a Suggested fix, and optional Also-consider notes.
+Not gating — capped at 2/day (UTC).
+7. AVA — Verifier Audit
+An adversarial audit of the verifier itself, run after Pass@2 and before Pass@5 — see AVA below.
+Passes when routing is pass, with no blocking (Major) finding.
+8. Adversarial Cheat-Pass
+Advisory
+A red-team pass asking whether the tests can be gamed without solving the task, run with task.toml hidden — see Adversarial Cheat-Pass below.
+Advisory only — posts a comment but never blocks.
+9. Per-Check QC — Task Soundness
+A second, independent tier of automated soundness checks and probes across the whole task, run once Automated Review and AVA both pass — see Per-Check QC — Task Soundness below.
+Passes when all checks and probes pass clean, with no blocking soundness defects.
+10. Agent Trial Results — Pass@5
+With the task and verifier now cleared by every review, the coding agent attempts the task five more times.
+Passes when the agent fails at least 3 of 5 attempts.
+Blue stages gate the PR. The yellow stage is advisory and never blocks.
+
+The combined gate — AVA ∪ Deep-Review
+The Automated Review (labeled Deep-Review in the combined comment) and AVA are a union: your task advances only when both pass, and either one failing blocks the PR. You only see the combined AVA ∪ Deep-Review box when something blocks — on a clean run you just see the individual passing comments.
+
+The difficulty gate
+If the agent solves your task 3 or more times out of 5, it is too easy and is rejected. The agent must fail at least 3 of 5 attempts. This is the hard, empirical difficulty bar — it's why "is this genuinely hard for an expert?" is the question to keep asking while you build. If a task is failing here, make the core reasoning harder; don't add busywork or crank up compute.
+
+Iterating
+When a check fails, its comment tells you what to fix. Edit, commit, and push to the same branch — you do not open a new PR. The comments update in place as the checks re-run.
+
+Pass@ & timeouts
+Pass@2 and Pass@5 are the agent-trial layers of the pipeline. Understanding Pass@ & Timeouts is the canonical source for the bands (0–2/5 accept, 3–5/5 reject), the 3600s ceiling, valid-vs-invalid failures, and the Terminus-2 / GPT-5.4 reference pair. The single-Dockerfile rule the rubric review enforces is defined in Build the Dockerfile; the full task.toml schema lives in the task.toml reference.
+
+The four review checks
+After Pass@2 and before Pass@5, these four deeper reviews run — Automated Review, AVA — Verifier Audit, and Per-Check QC — Task Soundness all gate the PR; Adversarial Cheat-Pass is advisory only:
+
+#	Check		What it checks
+1	Automated Review	🔵 Gates	Is the task sound?
+2	AVA — Verifier Audit	🔵 Gates	Is the verifier sound?
+3	Adversarial Cheat-Pass	🟡 Advisory	Can the tests be gamed?
+4	Per-Check QC — Task Soundness	🔵 Gates	A second, independent pass of granular soundness checks and probes.
+All four post a Verdict; how you act on one is the same for all — see Acting on a review comment below.
+
+1. Automated review — Is the task sound?
+A deep gap-rubric review of your whole task. It reads your instruction.md, solution/, tests/, environment/Dockerfile, and Pass@2 agent traces, and grades roughly two dozen criteria against the same rubric a human reviewer uses. The ones it flags most often:
+
+Test coverage — every requirement in instruction.md maps to an assertion; no material behavior is left unchecked.
+Correct expected values — the verifier's expected results are actually right (not a buggy golden), with an independent check rather than blind trust in the oracle.
+Fixture / tamper independence — ground truth isn't read from an agent-writable path (e.g. /app/…) without re-copying it to a trusted location or integrity-checking it.
+Traceability & consistency — instruction → solution → tests describe the same task; paths, schemas, and limits don't contradict each other.
+Clean agent traces — your Pass@2 traces show no reward hacking (no writing to reward.txt, no reading tests/ or solution/, no PATH or monkey-patch tricks).
+Difficulty evidence — the Pass@2 failures reflect the intended crux, not model-latency timeouts or format artifacts.
+Plus environment/permissions, Dockerfile structuring, line endings, and prompt-injection checks.
+It posts a Verdict (PASS/FAIL), Blocking Issues (each names the file and often the line, and ends with a concrete fix), Advisory Notes (never block), and a collapsible deep-review assessment: a requirement → assertion map, a Pass@2 trajectory analysis, a domain-expert read, the graded gap rubric, and CI escapes — a check on the pipeline itself that flags any misleading result (a defect that slipped a gate, or a check that failed for a non-task reason like a latency timeout).
+
+What a flag looks like
+Blocking: "A requirement in instruction.md has no matching assertion in tests/test_outputs.py — add a test asserting that field's value."
+Advisory: "max_tiles_played is generated by running the oracle itself, so the verifier fully trusts it — sound now because the oracle is exhaustive, but consider cross-validating with an independent method."
+2. Ava — Is the verifier sound?
+Where the Automated Review grades your task's quality, AVA (Adversarial Verifier Audit) attacks your verifier. It works blind — reconstructing what your verifier accepts without trusting your solution — then tries to break the boundary two ways:
+
+False accept — an invalid or adversarial submission that still earns reward 1 (the verifier is too loose).
+False reject — a valid, spec-faithful submission the verifier wrongly fails (too strict).
+It posts a routing of pass or block (empty output is treated as a fail, fail-closed): Major findings block and each describes the hole plus how to close it; Minor findings are advisory.
+
+What a flag looks like
+Blocking (Major): "The verifier loads its ground truth from /tests/reference_data.npz, which the submitted module can also read — a submission that does no real work can open that file and echo the reference values. → Move the reference data off any path the submission can read."
+Advisory (Minor): "The verifier imports its own oracle module (an import/phase risk) — noted, but does not block."
+3. Adversarial cheat-pass — Can the tests be gamed? (Advisory)
+A focused red-team that tries to build a submission passing every test without doing the real work — a stub, a hardcoded answer, a shortcut. It runs with your task.toml hidden so it can't lean on your notes, and it never gates (it's deliberately excluded from the Pass@5 gate). On FAIL it posts the concrete exploit — often the actual code that would pass — plus a fix.
+
+It targets the same weakness as AVA's false-accept, so a FAIL here is a strong signal that AVA or a human reviewer will catch it too. Take it seriously even though it can't block you: fixing it now saves a later rejection. A PASS means it couldn't build a passing-but-wrong submission.
+
+4. Per-check qc — Task soundness — Is the task internally sound?
+A second, independent tier of automated checks and probes that runs once Automated Review and AVA both pass — dozens of them (41–44 on a typical run), covering things like whether the reference solution actually still passes its own verifier, determinism (no random ports, PIDs, or unseeded randomness in the tests or solution), and correctness properties that can only be confirmed by execution rather than a static read.
+
+Each blocking issue is posted in a three-part format — What this means (the general risk), What we found (the specific evidence from your task), and Fix (the concrete remediation) — alongside a running count of checks passed and any advisory notes. This check gates the PR — Pass@5 does not run until it passes.
+
+What a flag looks like
+Must fix: "Oracle Fails Its Own Verifier — test_outputs.py. What this means: the task's own reference solution doesn't pass the task's tests, so even a perfect submission may be graded wrong. What we found: the reference solution does NOT pass its own verifier (reward=0). Fix: fix the reference solution (or the verifier) so solution/solve.sh scores full reward under the shipped tests."
+Advisory: "Correctness Not Statically Confirmable — tests/test_outputs.py: correctness of this task cannot be established statically — multiple graded outcomes require execution and are verified only by running artifacts."
+Acting on a review comment
+How to read the PR comments and make a decision
+
+These reviews attack different things, but you act on all of them the same way:
+
+Start at the Verdict. On FAIL, go straight to the Blocking Issues — the fix is written into each one. Fix them, commit, and push; the pipeline re-runs and re-reviews.
+Read the Advisory Notes even though they don't block — they're often the difference between a task that scrapes through human review and one that sails through.
+A FAIL is not a rejection. It's the gate telling you what to fix before Pass@5, part of iterating on the PR — not a decision on your task. And passing the gates doesn't guarantee human acceptance.
+When your task is complete, replace the repo's README.md with a short description of your task (overview, approach, environment, and how verification works).
+
+
+Understanding pass@ & Timeouts
+Before a task can be submitted, it runs through an automated evaluation pipeline. This page explains what that pipeline does, how to read your pass@ results, and how to set a timeout — because the most common mistake is misreading a timeout as difficulty.
+
+A good task is a solvable stump
+The oracle proves the task is solvable; the model must fail at least 3 of 5 attempts to prove it's hard. The bar is pass@5 ≤ 2/5, so 0–2/5 is acceptable — and a 0/5 is the strongest result, a fully stumped model. What matters is that the failures are valid: the model finishing and getting the answer wrong on a fair problem — not a timeout or an agent/verifier error (those never count). A 0/5 of valid failures is great; a 0/5 of timeouts or an ambiguous prompt is broken, not hard.
+
+The evaluation pipeline
+Your task moves through these layers in order. It must clear each one to advance:
+
+Proposal — you write and submit the proposal idea.
+Pull request — you open the PR with the full built task.
+Validity check — an automated LLM check runs on the PR.
+Pass@2 at your timeout — two runs at the timeout you set in task.toml. If either run times out, the task is rejected. This gate proves the model can finish inside your chosen budget.
+Automated Review (gates) — a deep gap-rubric review runs on your PR. Every Blocking Issue must be fixed and pushed before it passes; Pass@5 runs only after it does. See Automated Review.
+Pass@5 at your timeout — if all 5 trials time out, that's almost always because your timeout was set too low, not because the task is too hard. Raise it (up to the 3600s ceiling) and re-run. A task that can't finish inside 3600s is broken — but a task the model finishes and gets wrong every time (a clean 0/5) is exactly the stump we want.
+Pass@2 has a daily run limit
+Pass@2 is limited to 6 runs per day, per fellow, per task. Plan your runs — get the task into good shape locally with the oracle before spending a Pass@2 run.
+
+Pass@5 only runs if Pass@2 is valid
+Pass@5 is kicked off automatically — but only if Pass@2 produced a valid run (both trials finished inside your timeout without timing out) and the Automated Review passes. If Pass@2 fails the gate, or the Automated Review returns a FAIL verdict with Blocking Issues, Pass@5 never runs. Fix the blocking issue first and push — the pipeline re-runs.
+
+3600s is the ceiling for everyone
+3600 seconds is the hard maximum timeout across the entire project. Both Pass@2 and Pass@5 run at the timeout you set in task.toml, which must be at or below 3600s.
+
+Setting your timeout
+You set your own timeout and justify it — there are no fixed easy/medium/hard tiers. The only rules:
+
+Hard cap: 3600 seconds. Your timeout may not exceed it.
+The timeout must be long enough for the model to produce an answer. The challenge is correctness, not finishing in time. If the model can't even finish, you've built a speed test, not a difficulty test.
+Reading your pass@5 Score
+The acceptance bar is pass@5 ≤ 2/5 — the agent must fail at least 3 of 5 attempts.
+
+Pass@5 result	What it means	Outcome
+0/5 — valid failures	Fully stumped, the hardest case: the oracle still solves it and every model failure is a genuine wrong answer (no timeouts/infra/verifier errors).	Accepted
+0/5 — invalid failures	Failing for the wrong reason — timeout, agent/verifier error, or an unfair/ambiguous prompt. Broken, not hard.	Rejected — fix the cause
+1–2 / 5	Solvable and genuinely hard, with valid failures.	Accepted
+3–5 / 5	Too easy — the agent solves it 3 or more times out of 5.	Rejected
+How difficulty is measured
+The recorded pass@5 score must come from the Terminus-2 agent (via Harbor), run 5 times, using GPT-5.4. Cheaper models (Sonnet, Haiku) are fine for pre-filtering while you iterate, but the number you submit must be measured with the reference model.
+
+Model	Settings
+GPT-5.4	max completion tokens = 128,000; reasoning enabled; effort = xhigh
+Record the model in task.toml (model_tested, agent_tested) — see the task.toml reference.
+
+What to do at a 0/5
+A 0/5 is great if the failures are valid — the model finished and got the answer wrong, and your oracle still solves the task. It's only a problem when the failures are invalid: a timeout, an agent/verifier error, or an unfair/ambiguous prompt that makes the model fail for the wrong reason. Open the job analysis and read the breakdown — valid wrong answers → you're done; invalid → fix the cause:
+
+Cause	How to fix it
+Timeout (the model ran out of time)	Move difficulty into reasoning, not computation. Trim expensive steps. Raise the timeout only if justified (≤ 3600s). If it still times out, redesign.
+Ambiguous prompt	Tighten the instruction so there's exactly one reasonable interpretation — the model should fail because the problem is hard, not because the ask was unclear.
+Broken or brittle verifier	Fix it so it tests the real requirement and accepts any sound correct answer.
+Not solvable	Run your oracle (solve.sh) in a clean container — it must reach reward 1.0. The oracle, not the model, is what proves the task is solvable.
+Not every 0/5 is a good 0/5
+A 0/5 is the strongest result only if the failures are valid — the model finishing and getting it wrong, with the oracle still solving the task. A 0/5 made of timeouts, agent/verifier errors, or an ambiguous prompt is broken, not hard: the model is failing because the setup is unfair, not because the problem is difficult. Check the job-analysis breakdown before you submit.
+
+What to do at 3–5/5
+The task is too easy (pass@5 > 2/5) — raise the difficulty of getting the answer right:
+
+Add edge cases the model must handle.
+Require multi-step reasoning or interacting layers of complexity.
+Strengthen the verifier so a sloppy-but-close answer fails.
+Never game the score
+Do NOT lower the timeout or add busywork to push a 3–5/5 down. That makes the task harder to finish, not harder to get right — it's gaming, and reviewers will send it back. Difficulty must come from the problem, not the clock.
+
+Final checklist
+First clear the build checklist — task structure, instruction, Dockerfile, tests, and a genuine solution all live there. This page is the short list of validation-result gates to confirm right before you push:
+
+Work through each item.
+
+Checklist
+0 of 4 complete
+
+
+Oracle scores reward 1.0 (harbor run -p . --agent oracle); nop scores reward < 1.0 (harbor run -p . --agent nop).
+
+The [agent].timeout_sec in task.toml matches the "You have N seconds…" line in instruction.md, and is justified by the oracle's actual runtime (with headroom) — not padded or guessed.
+
+Pass@2 cleared the 3600s cap without timing out (see /submit/pass-at).
+
+Pass@5 lands in the 0–2/5 band — recorded in the PR. 0/5 (all valid failures, oracle passes, no timeouts) is the hardest case and is good. 3–5/5 means too easy or the verifier is too loose — do NOT submit. A 0/5 from timeouts or ambiguity is broken, not hard — do NOT submit, needs fixing.
+
+Open your pr
+Push your branch and open the PR against handshake-project-dynamo/<your-task-repo>:
+
+git add -A
+git commit -m "Task submission"
+git push -u origin submission
+gh pr create --repo handshake-project-dynamo/<your-task-repo> --fill
+
+Copy
+To iterate after reading the feedback, edit your files and push again:
+
+git add -A && git commit -m "Address review feedback"
+git push
+
+Copy
+The checks re-run on every push and update their PR comments in place. Your task is ready when the checks are green and the rubric verdict is PASS.
+
+Pr description template
+Use this exact shape for the PR body. It gives reviewers the one-sentence problem, the numbered criteria (mirroring instruction.md), your calibration results, and the commands to reproduce.
+
+## One-sentence problem
+The task is done when ___.
+
+## Success criteria (numbered, mirror instruction.md)
+1. ...
+2. ...
+
+## Calibration results
+- Golden solve.sh:                  reward 1.0
+- Bad / nop solution:               reward < 1.0
+
+## How to run
+harbor run -p . --agent oracle   # reward 1.0
+harbor run -p . --agent nop      # reward < 1.0
+
+## Notes / open questions
+Anything in instruction.md you had to interpret.
+
+Copy
+AI tool policy
+Task descriptions and solutions should be human-written. Other files (Dockerfiles, test boilerplate) may be generated by coding assistants as long as they are human-verified before submission.
+
+Submit on the platform
+Once your PR is open and the automated checks pass, there are a few steps you should perform on the platform to mark the task as ready for review.
+
+Before you submit
+Make sure the PR is actually green on GitHub. Submitting a task whose checks are still failing wastes a reviewer's slot and bounces straight back to you.
+
+Review the checklist and add reviewer notes
+Walk through the checklist one item at a time, then add notes that make it easier for a reviewer to evaluate the nuances of your task — anything subtle, tricky, or non-obvious they should know before reading your code.
+

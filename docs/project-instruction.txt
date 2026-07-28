@@ -1,0 +1,7 @@
+github repo:https://github.com/handshake-project-dynamo/dynamo-0fd2615-file-and-media-operations
+
+this is a handshake project where we have to create some bechmarks, for full detail, read docs/
+in this order:
+welcome.txt, intro.txt, installation.txt, task-file.txt, create-task.txt, shipment.txt.
+
+once we reached the stage of shipment.txt we will see what to do next.

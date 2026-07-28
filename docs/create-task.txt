@@ -1,0 +1,572 @@
+Creating a task
+Note down your Category and Sub-category when claiming
+When you claim a task, write down the Category and Sub-category you picked — you'll need to enter them in the proposal stage.
+
+You build one Harbor task at the root of your forked task repo. The steps below depend on each other, so it's easiest to work them in order, but there's no required commit structure — commit however you like and iterate freely. Test locally with the oracle before you open a PR.
+
+Before you start, skim Examples & Strategies — reading a good repo end-to-end is the fastest way to get a feel for what a strong task looks like.
+
+The whole journey at a glance — build a tricky-but-fair challenge for a smart AI model:
+
+The Dynamo Quest map — 1. Welcome, 2. Open the box (task file structure), 3. Get your tools (set up locally), 4. the main quest (Claim, Propose, Fork repo, Answer key, Grader, Package it, Write question), 5. Hand it in (PR, auto-checks, 5 model attempts), and the Golden Rule: no peeking at the answer key, and the grader must check the real answer.
+
+Claim a task — pick your favored category, then filter for the appropriate subcategory and claim the task.
+Write the proposal — define the idea and pass the automated proposal review before you build anything.
+Fork & set up the repo — fork your task repo, git checkout -b submission, and review the files already in place (see Task File Structure).
+Author solve.sh — your reference solution. Keep real logic in helpers (e.g. solution/solve.py) it calls; write outputs to the absolute paths instruction.md names.
+Write the tests — tests/test_outputs.py (one assertion per criterion, each with a docstring) and tests/test.sh (runs pytest, writes the reward to /logs/verifier/reward.txt). Bake test dependencies into the single environment/Dockerfile.
+Build the Dockerfile — environment/Dockerfile defines the task's single image (agent + verifier); put inputs in environment/data/ and COPY them in. Never COPY solution/ or tests/.
+Write instruction.md and task.toml — the prompt the agent reads (end with the "You have N seconds…" line) and the manifest (its full field reference is on the same page).
+Then validate the task locally and submit — the oracle must pass and nop must fail — and open your PR.
+Difficulty comes from reasoning
+Make the task hard for a person, not for the computer. Difficulty should come from reasoning — not from cranking up CPU, memory, or wall-clock time. The agent has open internet, so the answer must not be findable online.
+
+1 · Claim a task
+Note down your Category and Sub-category when claiming
+When you claim a task, write down the Category and Sub-category you picked — you'll need to enter them in the proposal stage.
+
+Claim a task on the platform and read through the Intro page. The Intro lays out everything you need to know about the task before you start building — scope, expected outputs, and constraints.
+
+Claiming locks the task
+Only claim a task you fully intend to work on. If after opening it you decide it's not a good fit, release it through the platform so someone else can pick it up — don't sit on it.
+
+How to claim
+1
+Open the task queue on the platform
+Sign in to the annotation platform and open the Dynamo task list. Filter by category and subcategory and choose one you're confident you can contribute to.
+
+2
+Claim the task
+Hit Claim on the row. The task now belongs to you and is hidden from the rest of the queue. The platform records the claim timestamp, which starts your working window.
+
+3
+Release if it's not a fit
+If the task isn't right for you after reading it, use the platform's Release (or Abandon) action so someone else can pick it up. Don't leave it claimed. last: true
+
+Accept the repo invite
+After you claim a task, you'll receive an invite link to access its repo. Accept the invite — once you do, the task's repo link becomes visible on the platform and you can start working.
+
+One active claim at a time
+Keep your queue clean — finish or release the task you've claimed before picking up another. Parallel claims slow the whole pipeline down.
+
+2 · Write the proposal
+Before you build anything, you write a short proposal describing the task you want to create. An automated reviewer reads it and returns passed or failed with specific feedback. You revise and resubmit until it passes — then you scaffold the repo. The proposal is a cheap gate: it catches ideas that are too easy, un-gradable, or impossible before you spend hours on a solution and tests.
+
+A proposal is judged on the idea, not on polished prose. There is no solution or test code yet — don't write any. Four things must be in it.
+
+The four things every proposal must include
+The difficulty — what the task is and why it's genuinely hard for an expert. Name the specific reasoning, domain knowledge, or multi-step problem-solving involved; who in the real world does this work; and where any data comes from (synthetic or real, and whether it's realistically challenging). Not "this is hard."
+The intended approach — a high-level strategy and the key insight for how it would be solved. Enough that another expert sees how they'd do it. This proves you actually hold a solution, not just a hope that one exists. Include a best-case expert-time estimate (focused hours for a senior practitioner who already knows the approach).
+How it will be verified — what output the agent must produce and how a program would deterministically check it's correct. If you'll accept a range or tolerance instead of an exact answer, say what the band brackets and why it admits valid variation but rejects wrong methods.
+Category & sub-category justification — a brief justification for why this task belongs to the category and sub-category you chose. Ground it in the task's actual reasoning and domain, not generic labels.
+Do not edit Category or Sub-category
+The Category and Sub-category input fields are pre-filled and must not be edited. Leave them exactly as they appear — your justification in answer 4 is where you explain the fit.
+
+Answering these four questions now means you've de-risked the task before building it — they're the same questions you'll need to satisfy when you write task.toml and the verifier.
+
+Pass the platform-gated check before moving on
+Don't start scaffolding, writing tests, or building a solution until your proposal clears the platform's automated review. Submit, then read the comments on the right — they show pass/fail per criterion and actionable feedback on exactly what to fix. Revise and resubmit until it passes. Every hour spent building on top of a proposal that hasn't passed is an hour you may have to throw away.
+
+What makes a proposal pass
+The reviewer holds your idea to a high bar. A strong proposal clears all of these:
+
+Work through each item.
+
+Checklist
+0 of 6 complete
+
+
+Hard for a competent domain expert — not solvable by an average undergrad in a few days, and not just tedious or high-volume.
+
+Requires real multi-step terminal work — exploration, running code, debugging, iterating. Not solvable on paper or in one shot.
+
+Not a textbook or well-known problem a model could reproduce from memory.
+
+A solution plausibly exists and is bounded — you can sketch the approach, not just assert it's possible.
+
+Deterministically checkable, and the answer can't be looked up online, shortcut, or hardcoded.
+
+Graded on the result (what is produced), never on the method. No mandated tools or step-by-step procedure.
+Why proposals fail
+The most common rejections: difficulty stated vaguely ("requires expertise"); an approach that only claims a solution exists without conveying the key insight; tolerances/ranges with no justification; no expert-time estimate; a task that's actually solvable by reasoning alone; a standard problem with a well-known solution; or grading that depends on how the agent solves it. Each is fixable by editing the proposal — the reviewer's feedback tells you exactly what to add.
+
+Worked example — a proposal that passes
+Task: Implement a concurrent C++ larger-than-memory key-value store that beats Microsoft FASTER on the YCSB-A benchmark, in one shot, inside a 4-CPU / 2 GB container.
+
+Difficulty: The ~3 GB dataset exceeds the 2 GB container, so a naive approach thrashes or runs out of memory — a real larger-than-memory architecture (compact in-memory index + on-disk value log) is mandatory just to load. Beating a 7-year-optimized production system is genuine storage-systems R&D, the day-job of engineers who build databases and caches.
+
+Approach (key insight): Specialization beats generality. Exploit the fixed, known workload — fixed-size values, integer keys, a small hot key-set, fixed core count — to shed the overhead FASTER pays for being general-purpose (variable-length records, full recovery, general garbage collection). A senior systems engineer who holds this design could implement it in ~2–3 focused days.
+
+Verification: Deterministic gates — correctness/anti-cheat tests, proof that values are actually on disk, and a throughput comparison run in the same harness as FASTER (median of 5 runs, run-phase only, identical traces). The pass bar allows a small margin to absorb measured run-to-run jitter while still rejecting a genuinely slower solution.
+
+Once your proposal passes, move on to 3 · Fork & set up the repo.
+
+3 · Fork & Set up the repo
+You were assigned a task repo under handshake-project-dynamo. Fork it, clone your fork, and make a working branch — you propose changes back via a pull request.
+
+gh repo fork handshake-project-dynamo/<your-task-repo> --clone
+cd <your-task-repo>/task
+git checkout -b submission
+
+Copy
+The task scaffold lives in the /task folder in the repo. The repo is already scaffolded, with the task under that task/ directory. Confirm the layout (don't rename or move top-level files):
+
+task/
+├── task.toml
+├── instruction.md
+├── solution/solve.sh
+├── environment/Dockerfile
+├── tests/{test.sh, test_outputs.py}
+├── .dynamo/  .github/  .harbor/   # provided — do not edit
+└── README.md
+
+Copy
+If your task needs input files, put them under environment/data/; the Dockerfile copies them into the agent's container.
+
+Work through each item.
+
+Checklist
+0 of 3 complete
+
+
+Forked and cloned your task repo; on the submission branch
+
+Layout confirmed — task lives under task/, top-level files intact
+
+Input/seed files (if any) placed under environment/data/
+
+4 · Author solve.sh
+solution/solve.sh is your reference (Oracle) solution — it must complete the task correctly, which proves the task is solvable. Harbor mounts solution/ at /solution/ and runs solve.sh. Keep the real logic in a helper (e.g. solution/solve.py) that solve.sh calls, and write outputs to the absolute /app/... paths named in instruction.md.
+
+#!/bin/bash
+
+# Real logic lives in a helper; write outputs to the /app paths in instruction.md.
+python3 /solution/solve.py
+
+Copy
+Rules for solve.sh
+Don't install packages here (apt-get/pip install) — the agent's environment/Dockerfile handles all setup.
+Write outputs to absolute /app/... paths. Put non-trivial logic in helper files under solution/ rather than one giant heredoc.
+Then prove it works locally — the oracle must score reward 1.0:
+
+harbor run -p . --agent oracle
+# expect: reward 1.0
+
+Copy
+Look at what the solution actually produced and write a numbered list of observable success criteria (file existence, schema, ordering, arithmetic relationships). That list drives the tests (Step 5) and becomes the spec in instruction.md (Step 7).
+
+Work through each item.
+
+Checklist
+0 of 5 complete
+
+
+solve.sh calls helper logic (e.g. solution/solve.py)
+
+Writes outputs to the absolute /app paths named in instruction.md
+
+No package installs inside solve.sh
+
+harbor run -p . --agent oracle scores reward 1.0 locally
+
+Numbered list of observable success criteria captured
+
+
+5 · Write the tests
+The verifier runs after the agent finishes, in a fresh container from the task's single image (environment/Dockerfile — the single-Dockerfile rule and allowlist live on Step 6); tests/ is added only at verify time and is not present during the agent run. The verifier can read only: the output files the agent wrote at the /app/... paths your instruction.md declares, anything baked into the single image, and sidecars from environment/docker-compose.yaml. Keep ground-truth/oracle data inside tests/ (added at verify time) — never in environment/, where the agent could read it.
+
+tests/test.sh just runs your tests and writes the reward — it must not install or download anything (verify-time setup is rejected by the static checks; bake deps into environment/Dockerfile instead).
+
+#!/bin/bash
+pytest --ctrf /logs/verifier/ctrf.json /tests/test_outputs.py -rA
+
+if [ $? -eq 0 ]; then
+  echo 1 > /logs/verifier/reward.txt
+else
+  echo 0 > /logs/verifier/reward.txt
+fi
+
+Copy
+tests/test_outputs.py — one function per success criterion, each with a docstring, asserting on observable artifacts at the /app paths the instruction names. Check real outputs; never string-match source or reference solve.sh. And harden it against a verifier that reads its own answer key back — see Don't symlink the answer.
+
+Reviewer will check this closely
+Tests are the single biggest reason PRs get rejected. Cross-check yours against What only a human can judge — especially that each test maps to a stated criterion, asserts on real artifacts, and isn't gameable by a nop agent.
+
+import json
+from pathlib import Path
+
+def test_output_exists():
+    """The agent must write /app/output.json."""
+    assert Path("/app/output.json").exists()
+
+def test_output_schema():
+    """output.json contains the required keys."""
+    data = json.loads(Path("/app/output.json").read_text())
+    assert {"input_rows", "output_rows", "duplicates_removed"} <= data.keys()
+
+Copy
+Then calibrate — the golden solution passes and doing nothing fails:
+
+harbor run -p . --agent oracle   # expect reward 1.0
+harbor run -p . --agent nop      # expect reward < 1.0
+
+Copy
+Work through each item.
+
+Checklist
+0 of 7 complete
+
+
+One test function per success criterion, each with a docstring
+
+Asserts on observable /app artifacts — not stdout or source matching
+
+test.sh installs/downloads nothing; deps are baked into environment/Dockerfile
+
+Reward written to /logs/verifier/reward.txt (1/0)
+
+Oracle scores reward 1.0 and nop scores reward < 1.0
+
+No reward.txt ships in the environment. test.sh always writes 0 or 1, even on missing prerequisites or a no-op, and never exits without writing the reward.
+
+Tests use fixed seeds and inputs. No unseeded randomness, live-generated data, or wall-clock/date dependence.
+
+
+6 · Build the dockerfile
+environment/Dockerfile defines the task's single image — built once and reused for both the agent run and the verifier run. The agent has open internet by default (allow_internet = true in task.toml), but you should still bake in everything the task needs for reproducibility — including the pinned test dependencies — and design so the answer can't simply be fetched online.
+
+Base images: allowlist + digest-pinned
+Every FROM must use a base image from the pre-approved allowlist (use one unless none support your task's dependencies) and must be pinned by digest (@sha256:…), never by tag alone. :latest is never allowed, and a floating tag like python:3.13-slim-bookworm without a digest is also rejected.
+
+Use one of these pre-approved base images. Only reach for something else if none of them can support your task's dependencies — and document why. Always pin by the digest shown (@sha256:…); never use a bare tag or :latest.
+
+Language / runtime	Allowed versions & variants	Approved base image (pin by this digest)
+Go	1.21–1.26 majors + alpine/bullseye/bookworm	public.ecr.aws/docker/library/golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac
+Python	3.10 / 3.11 / 3.12 / 3.13 majors + patch + slim/non-slim	public.ecr.aws/docker/library/python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
+Debian	bookworm / bullseye / 12.x slim variants	public.ecr.aws/docker/library/debian:bookworm-slim@sha256:4724b8cc51e33e398f0e2e15e18d5ec2851ff0c2280647e1310bc1642182655d
+Rust	1.75–1.95 + slim/non-slim + bullseye	public.ecr.aws/docker/library/rust:1.85-slim@sha256:9f841bbe9e7d8e37ceb96ed907265a3a0df7f44e3737d0b100e7907a679acb36
+Node	18 / 20 / 22 / 24 majors + slim/non-slim	public.ecr.aws/docker/library/node:22-bookworm-slim@sha256:f3a68cf41a855d227d1b0ab832bed9749469ef38cf4f58182fb8c893bc462383
+Ubuntu	22.04 / 24.04 / jammy variants	public.ecr.aws/docker/library/ubuntu:24.04@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
+Java	17 / 21 jdk-jammy/noble variants	public.ecr.aws/docker/library/eclipse-temurin:21-jdk-jammy@sha256:25d1276565738d3c805e632a4542c3a7598866ef967f4def6544c15de3a74b14
+Ruby	3.2 / 3.3 / 3.4 + slim/non-slim	public.ecr.aws/docker/library/ruby:3.3-slim-bookworm@sha256:e76733e94b3a5893e4a141024ef3a583dc10781dc24becebf74f9c9f9a33e3df
+Maven	+ temurin-17/21 variants	public.ecr.aws/docker/library/maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e
+GCC	12 / 13 / 14 / 15 variants	public.ecr.aws/docker/library/gcc:13-bookworm@sha256:930f2ebe239275fa67226654cb79273ea34eee672ae61c8a39f689c37fb7ac5c
+Pinning to a different version in the same family
+The digests above pin one specific image per family. You may target another allowed version in the same family (e.g. a different Python patch or a slim/non-slim variant) — but you must pin it to that image's own @sha256:… digest. A tag without a digest is rejected.
+
+FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm@sha256:<digest-from-allowlist>
+
+# Don't pin apt versions; update before install; clean lists in the same layer.
+RUN apt-get update && apt-get install -y --no-install-recommends <packages> \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin pip/npm versions. Bake test dependencies into the single image (pinned).
+RUN pip install --no-cache-dir pytest==8.4.1 pytest-json-ctrf==0.3.5
+
+# Put inputs in environment/data/ and copy them in.
+COPY data /app/data
+
+# Pre-create the parent dir of every output path the agent writes, or artifact upload fails.
+RUN mkdir -p /app
+
+WORKDIR /app
+
+Copy
+Dockerfile rules
+Pinned base image from the allowlist, pinned by digest (@sha256:…); no :latest, no bare tags. Pin pip/npm to exact versions; do NOT pin apt packages.
+Never COPY solution/ or tests/ such that they're readable during the agent run — CI enforces this. (tests/ is added only at verify time.)
+Put input data in environment/data/ and COPY it to /app/.... Never put solution or ground-truth data here.
+Bake every test dependency (pinned) into this single Dockerfile — tests/test.sh installs nothing at verify time.
+Use a multi-stage build for any compiled artifact (cargo/go/mvn/npm build) so the toolchain and build cache don't survive into the runtime image.
+Add a .dockerignore and scope COPY narrowly. Never copy .git, caches, or unrelated files.
+Order layers least- to most-volatile; consolidate apt installs into one RUN and clean lists in the same layer; never apt-get upgrade.
+Put source and fixtures on disk and COPY them. No RUN cat <<EOF heredocs; extract .tar.gz fixtures at build so files appear as layer entries.
+chmod only the specific files that need it. Never chmod -R a whole tree.
+Validate end to end with Harbor (the oracle passes, doing nothing fails):
+
+harbor run -p . --agent oracle   # expect reward 1.0
+harbor run -p . --agent nop      # expect reward < 1.0
+
+Copy
+Work through each item.
+
+Checklist
+0 of 10 complete
+
+
+The Dockerfile uses an allowlisted base image pinned by digest (@sha256:…) — no :latest, no bare tags
+
+pip/npm pinned to exact versions; apt not pinned
+
+environment/Dockerfile does NOT COPY solution/ or tests/
+
+Input data lives in environment/data/ and is COPYed to /app
+
+Test dependencies (e.g. pytest, pytest-json-ctrf) are baked pinned into the single environment/Dockerfile, and RUN mkdir -p /app is present
+
+Oracle scores reward 1.0 and nop scores reward < 1.0
+
+No unnecessary files in the image (logs, caches, venvs, editor metadata, large unused assets).
+
+The agent image doesn't include dependencies only the oracle needs — they would hint the solution path.
+
+Any service the task needs starts reliably, exposes the expected ports, and has a health check.
+
+Text files use LF (Unix) line endings.
+7 · Write instruction.md and task.toml
+instruction.md is the prompt handed verbatim to the agent — the only thing it sees. Write it yourself, as a domain expert (no LLM-generated text). It's a prompt, not a document: no title, no section headers, no roleplay, no fluff. Use absolute /app/... paths, name every expected output file and its exact format, and don't reveal your solution. Keep it under 1,500 tokens, and end with the required timeout line.
+
+Deduplicate the order records in /app/orders.csv and write /app/output.json with the
+keys "input_rows", "output_rows", and "duplicates_removed". Two records are duplicates
+when they share the same (order_id, customer_id). Do not modify /app/orders.csv.
+
+You have 120 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+
+Copy
+The final line is enforced
+instruction.md must end with exactly: "You have N seconds to complete this task. Do not cheat by using online solutions or hints specific to this task." — where N is [agent].timeout_sec in task.toml. A static check (check-instruction-suffix) fails the PR otherwise. Update both numbers together.
+
+task.toml is the manifest. Fill the metadata and tune the timeouts/resources; the full field-by-field reference is below. category and subcategory are pre-seeded by the Dynamo team — you only set task_objective and artifact_type, picking lowercase snake_case labels from .dynamo/diversity-taxonomy.toml (browse them on the Task categories page). Carry the difficulty/approach/verification answers from your proposal into difficulty_explanation, solution_explanation, and verification_explanation.
+
+*artifacts = []  # output paths the verifier reads (above first [section])
+
+[task]
+*name = "dynamo/your-task-name"  # org/name; name lowercase kebab-case, <=3 words
+*description = ""                 # one-line task summary
+
+[metadata]
+# --- Pre-seeded — DO NOT EDIT ---
+category = ""                      # assigned by the Dynamo team
+subcategory = ""                   # assigned by the Dynamo team
+
+# --- Fixed for this dataset — leave as-is ---
+model_tested = "GPT-5.4"           # benchmarking model
+agent_tested = "Terminus-2"        # benchmarking agent
+
+# --- You fill these in ---
+# task_objective / artifact_type: from .dynamo/diversity-taxonomy.toml (snake_case)
+task_objective = []                # e.g. ["implement", "debug"]
+artifact_type = []                 # e.g. ["codebase", "configuration_file"]
+expert_time_estimate_hours = 0     # expert best-case hours
+*difficulty_explanation = ""        # why it's hard
+*solution_explanation = ""          # approach + key insights
+*verification_explanation = ""      # how tests verify
+
+[verifier]
+timeout_sec = 120.0                # raise for slow test suites
+# environment_mode left unset (TB2 shared model; Harbor overlays tests/ at verify time)
+
+[agent]
+timeout_sec = 120.0                # raise for hard tasks
+
+[environment]
+build_timeout_sec = 600.0          # max Docker build seconds
+cpus = 1                           # raise for compute-heavy work
+memory_mb = 2048                   # raise for large/in-memory data
+storage_mb = 10240                 # raise for large files/artifacts
+gpus = 0                           # max 1 (H100)
+allow_internet = true              # agent has open internet
+*mcp_servers = []                   # optional MCP servers
+
+Copy
+* — additional fields we are adding.
+
+instruction.md is capped at 1,500 tokens
+instruction.md must not exceed 1,500 tokens. If you need to specify a structured output schema, document it in instruction.md or in a referenced spec file (and reference that file from the prompt). Subjective goals like "make this better" are not allowed — every requirement must come with an objective acceptance criterion the verifier can assert on.
+
+Reviewer will check your metadata
+Metadata labels and the instruction prompt are scored items on the Reviewer guideline. Before moving on, confirm your task_objective and artifact_type are best-fit (not just valid) per Recording your verdict, and that instruction.md reads cleanly to a domain expert who has never seen your solution.
+
+Work through each item.
+
+Checklist
+0 of 7 complete
+
+
+instruction.md is human-written and prompt-style — no title, headers, roleplay, or fluff
+
+Absolute /app paths; every output file and its format named; solution not revealed
+
+Ends with the exact "You have N seconds…" line (N = agent timeout)
+
+instruction.md is under 1,500 tokens
+
+task.toml metadata filled — task_objective and artifact_type chosen from .dynamo/diversity-taxonomy.toml (lowercase snake_case), expert_time_estimate_hours, difficulty_explanation, solution_explanation, verification_explanation (category, subcategory, model_tested, agent_tested are pre-seeded and left as-is)
+
+agent/verifier timeouts set
+
+Don't claim a tool, service, or dataset exists unless it's actually present in the environment.
+task.toml field reference
+Block	Field	Notes
+(top-level)	artifacts	Array of absolute paths the verifier reads from the agent (e.g. ["/app/output.json"]). Must appear above the first [section] header.
+[task]	name	Required format org/name (Harbor needs the slash). The name part is lowercase kebab-case, ≤3 words (e.g. dynamo/dedupe-orders).
+[task]	description	One-line summary of the task.
+[metadata]	category / subcategory	Pre-seeded by the Dynamo team when your task repo is created — do not edit.
+[metadata]	model_tested / agent_tested	Fixed for this dataset: leave as "GPT-5.4" and "Terminus-2" (the difficulty-benchmarking model and agent, run via Harbor). Cheaper models can pre-filter while you iterate, but the recorded pass@5 number must come from this reference pair.
+[metadata]	task_objective	Array of lowercase snake_case labels (e.g. ["implement", "debug"]) chosen from .dynamo/diversity-taxonomy.toml.
+[metadata]	artifact_type	Array of lowercase snake_case labels (e.g. ["codebase", "configuration_file"]) chosen from .dynamo/diversity-taxonomy.toml.
+[metadata]	expert_time_estimate_hours	Best-case hours for a focused domain expert who already holds the intended insight. Non-zero, consistent with the difficulty.
+[metadata]	difficulty_explanation	Why this task is hard for agents and humans — the same difficulty argument from your proposal.
+[metadata]	solution_explanation	High-level approach and key insights — the same intended-approach answer from your proposal.
+[metadata]	verification_explanation	How the tests verify correctness — the same verification answer from your proposal.
+[verifier]	timeout_sec	Seconds for the verifier; raise based on your test suite's runtime demands.
+[verifier]	environment_mode	Leave unset. Canonical TB2 uses the shared model: the verifier runs in the task's environment image (environment/Dockerfile), and Harbor overlays tests/ at verify time. There is no separately-built verifier container.
+[agent]	timeout_sec	Seconds the agent gets. Raise for hard tasks (agents may run for many minutes or hours), and keep instruction.md's final timeout line in sync with this number.
+[environment]	build_timeout_sec	Max seconds for the Docker build.
+[environment]	cpus / memory_mb / storage_mb	Resource caps. Raise only as the task genuinely needs — difficulty should come from reasoning, not compute.
+[environment]	gpus	0 by default; max 1 (expect an H100) if the task truly needs it.
+[environment]	allow_internet	true by default — open internet is available to the agent. The answer must still not be retrievable online (see anti-cheat). If a task genuinely needs a specific external host, justify it and keep the access minimal and documented; if it needs no network, set false.
+[environment]	mcp_servers	Optional MCP servers to expose to the agent. Leave as [] unless the task genuinely needs one.
+No author info
+Do not put your name, email, or other personal information in task.toml. Identity is recorded outside the manifest.
+
+Validate & Submit
+This is the required validation before you open a PR. The PR reviewer reads your files but never builds or runs them — so you are responsible for proving the finished task actually builds, is solvable, and is graded correctly. Run the full oracle end-to-end on the completed task, then work the checklist below.
+
+You need Docker running and Harbor installed — see Prerequisites and Install Harbor. No model API key is required for an oracle run; the commands live in Harbor commands. Run them from the task/ directory.
+
+Validate the task locally
+Oracle must pass (reward 1.0)
+Builds the single task image, runs your solution/solve.sh, then runs the verifier from that same image.
+
+harbor run -p . --agent oracle
+# expect: reward 1.0
+
+Copy
+Anything less than 1.0 means the task isn't solvable/verifiable as packaged — fix and re-run before going further.
+
+Nop must fail (reward < 1.0)
+The nop agent does nothing. It must fail — if it passes, the verifier is too weak and is scoring a pass without the work being done.
+
+harbor run -p . --agent nop
+# expect: reward < 1.0
+
+Copy
+Confirm the image is clean
+The golden solution and tests must never be baked into the agent image.
+
+docker run --rm <repo-name>:dev /bin/bash -lc \
+  'find / \( -name solve.sh -o -name test.sh \) 2>/dev/null'
+# expect: no output
+
+Copy
+Confirm it's repeatable
+Re-run the oracle and the nop a second time from a clean checkout. The oracle must score reward 1.0 both times and the nop < 1.0 both times, and the verifier must produce the same reward for the same final state. If results vary, something is nondeterministic — fix seeds/inputs before submitting.
+
+Self-review with the reviewer guideline
+Your PR will be graded against the Reviewer guideline — the same checklist a reviewer uses. Skim What only a human can judge and Recording your verdict and self-review first. Most rejections are caught by the author in 10 minutes of reading these pages.
+
+Final checklist
+Each item is pass / fail — if any fails, the task isn't ready.
+
+1 · Scaffold complete
+Work through each item.
+
+Checklist
+0 of 2 complete
+
+
+Task lives under task/ — task.toml, instruction.md, solution/solve.sh, environment/Dockerfile, tests/test.sh, tests/test_outputs.py all present and filled in.
+
+The provided .dynamo/, .github/, and .harbor/ folders are unmodified.
+2 · Instruction is Harbor-clean
+Work through each item.
+
+Checklist
+0 of 4 complete
+
+
+instruction.md is human-written (not LLM-generated), uses absolute /app/... paths, and names every output file explicitly.
+
+It describes WHAT to achieve, not HOW — no step-by-step procedure, no mandated tools (except constraints that exist purely to prevent cheating).
+
+It does not reveal the solution, and ends with "You have N seconds to complete this task. Do not cheat by using online solutions or hints specific to this task." (N = [agent].timeout_sec).
+
+instruction.md is under 1,500 tokens (hard cap).
+3 · task.toml complete
+The full field-by-field schema and allowed values are on the task.toml reference — this checklist only confirms the fellow-set fields are filled. The single-Dockerfile contract these tests run against lives on Build the Dockerfile.
+
+Work through each item.
+
+Checklist
+0 of 2 complete
+
+
+task_objective, artifact_type (lowercase snake_case, from .dynamo/diversity-taxonomy.toml), expert_time_estimate_hours, difficulty_explanation, solution_explanation, and verification_explanation are all filled; category, subcategory, model_tested, and agent_tested are left at their pre-seeded values.
+
+"[agent].timeout_sec matches the timeout line in instruction.md; environment_mode is left unset — the verifier runs in the environment image and Harbor overlays tests/ at verify time."
+4 · Agent image is clean
+Work through each item.
+
+Checklist
+0 of 3 complete
+
+
+environment/Dockerfile does NOT COPY solution/ or tests/.
+
+Input data lives in environment/data/ and is COPYed in; pip dependencies are pinned (apt packages need not be).
+
+No answer, ground-truth, or oracle data is reachable anywhere the agent can read.
+5 · Outputs ↔ verifier wired
+Work through each item.
+
+Checklist
+0 of 3 complete
+
+
+The output paths in instruction.md match the paths tests/test_outputs.py reads.
+
+Ground-truth / expected answers live in tests/ (added only at verify time, not present during the agent run) — or are recomputed at grade time from inputs the agent can't write. Never derived from an agent-writable path, and never in environment/.
+
+One test function per success criterion, each with a docstring; nothing graded that the instruction never states.
+6 · Verifier runs correctly
+Work through each item.
+
+Checklist
+0 of 2 complete
+
+
+tests/test.sh writes the reward to /logs/verifier/reward.txt (1/0, or a fractional score if the task grades partial credit — matching what the instruction promises); tests check the agent's real outputs, not source-code string matching.
+
+All verifier dependencies are baked (pinned) into the single environment/Dockerfile; the parent dir of each artifact is pre-created (e.g. RUN mkdir -p /app).
+7 · Solvable, novel, and deterministic
+Work through each item.
+
+Checklist
+0 of 3 complete
+
+
+The task is genuinely solvable and the solution computes the answer (no hardcoded results); solution/ is human-written.
+
+The task is novel — not a reworded or reskinned Terminal-Bench 2 or 3 task.
+
+Results are deterministic and don't depend on a mutable live service. Open internet is available to the agent, so the answer must not be retrievable online.
+The bar for submitting
+Treat oracle 1.0, nop < 1.0, clean image, offline build, repeatable (stable across re-runs) as the gate. A task that fails the oracle is not Harbor-compliant and is not ready to submit — catching problems now is far faster than round-tripping through the PR.
+
+Once every item is pass, head to Submitting the PR. If any item is close-but-not-quite, skim Common errors and examples for the recurring shapes these gates catch.
+
+1. Write the proposal
+Make sure to write a proposal and statement that results in a difficult task for the model.
+
+2. Create the four core components
+The four contracts, instruction.md, the environment, the solution, and the tests, must agree with each other.
+3. Write good instructions
+Describe the goal, not the method — and pin exact input and output paths.
+
+4. Specify the environment, inputs, and metadata
+You must stage input files in the repo for the agent to use. You should also write the Oracle solution and the task metadata in task.toml.
+
+5. Sample instruction.md
+Try to stump the model through a well-written instructions.md.
+6. Write the solution
+You should write the Oracle solution, verifiers, and run Harbor locally.
+
+Confirm reward = 1 before you push
+A reward of 1 means the Oracle Solution passed every verifier. Inspect the logs first.
+
+7. Pull request and review
+Go through the PR workflow, automated checks, Pass@k evaluation, and human review.
+
+The pipeline has grown since this recording
+The checks now include an AVA (Adversarial Verifier Audit) layer alongside the Automated Review. For the current end-to-end flow — every check in order and what gates the PR — see What happens on your PR.

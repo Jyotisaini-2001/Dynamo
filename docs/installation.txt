@@ -1,0 +1,110 @@
+Getting started
+Three things before you build: install the prerequisites, install Harbor, and fork your assigned task repo.
+
+Prerequisites
+Docker installed and running
+uv installed — https://astral.sh/uv
+Python 3.11+
+GitHub CLI (gh) — https://cli.github.com/, then gh auth login
+Install harbor
+uv tool install harbor
+harbor --version
+
+Copy
+Fork your task repo
+You were assigned a task repo under handshake-project-dynamo. Fork it, clone your fork, and make a working branch. You don't have write access to the base — you propose changes via a pull request.
+
+gh repo fork handshake-project-dynamo/<your-task-repo> --clone
+cd <your-task-repo>/task
+git checkout -b submission
+
+Copy
+See Workflow Step 3 for the full fork-and-scaffold sequence, including the expected directory layout.
+
+Core Harbor commands (run from the task/ directory)
+harbor run -p . --agent oracle  →  run your solution against the verifier (expect reward 1.0)
+harbor run -p . --agent nop     →  run the no-op agent; doing nothing must score reward < 1.0
+
+Copy
+You don't need to run these yet body: These commands come up later, during the workflow steps — after you've authored `solve.sh`, written tests, and built the Dockerfile. They're listed here so you know what Harbor will ask of you, not as something to run right now.
+No model API key is needed to scaffold, run the oracle, or calibrate locally.
+
+Prerequisites
+A one-time setup. Install all three before installing Harbor.
+
+Docker - Harbor uses Docker to build and run your task locally. See the install steps below.
+uv - Astral's Python package manager. curl -LsSf https://astral.sh/uv/install.sh | sh, then uv --version. See https://astral.sh/uv.
+Python 3.11+ - python3 --version. uv will manage Python toolchains if you need a newer interpreter.
+Install docker
+Pick the install path for your OS, start Docker, and confirm it's running.
+
+macOS - download Docker Desktop from https://www.docker.com/products/docker-desktop/ (choose the Apple Silicon or Intel build to match your machine), open the .dmg, and drag Docker to Applications. Launch Docker Desktop once so it finishes setup.
+
+Windows - download Docker Desktop from https://www.docker.com/products/docker-desktop/ and run the installer. It will enable WSL 2 if it isn't already; reboot when prompted, then launch Docker Desktop.
+
+Linux - install Docker Engine using the official convenience script, then add your user to the docker group so you can run it without sudo:
+
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+
+Copy
+Full per-distro instructions: https://docs.docker.com/engine/install/.
+
+Verify
+docker --version
+docker ps
+
+Copy
+docker ps should print an empty table (no error). If you see "Cannot connect to the Docker daemon," start Docker Desktop (macOS/Windows) or sudo systemctl start docker (Linux) and try again.
+
+No API key needed for local work
+You do not need a model API key to scaffold a task, run the oracle agent, or calibrate locally. API keys come in only when you run a real evaluation against a hosted model.
+
+
+Install harbor
+Harbor builds and runs your task locally in Docker. Install it once as a global tool:
+
+uv tool install harbor
+harbor --version
+
+Copy
+⚠️ Install `harbor`, not `harbor-cli`
+The package you need is harbor — not harbor-cli. Both are technically CLIs, but harbor-cli is a completely different application and will not work for Dynamo tasks. Double-check the name before installing.
+
+You point Harbor at your task by running it from the task/ directory (harbor run -p . --agent oracle) and it builds the single task image, runs it, and writes the reward to /logs/verifier/. (You do not need to clone terminal-bench-2 — your task lives in your own forked repo.)
+
+Harbor commands
+Run these from the root of your task repo.
+
+Command	What it does
+harbor run -p . --agent oracle	Build the images and run the oracle agent (your solution/solve.sh) against the verifier. Expect reward 1.0.
+harbor run -p . --agent nop	Run the nop agent (does nothing). It must fail — expect reward < 1.0. If it passes, your verifier is too weak.
+The loop you repeat: edit task files, then harbor run -p . --agent oracle. Oracle must score 1.0 and nop must score < 1.0 before you open a PR.
+
+You don't need to run these yet
+These commands come up later, during the workflow steps — after you've authored solve.sh, written tests, and built the Dockerfile. They're listed here so you know what Harbor will ask of you, not as something to run right now.
+
+Calibration loop
+The harness is correct if and only if it fails a wrong solution and passes the golden one. You'll run this loop after writing the tests in Step 5, and again after building the Dockerfile in Step 6.
+
+Wrong solution must fail (Reward < 1.0)
+Replace solve.sh with something trivially wrong - an empty script, a stub that writes nothing. Run Harbor from the task/ directory.
+
+echo '#!/bin/bash' > solution/solve.sh
+harbor run -p . --agent oracle
+cat /logs/verifier/reward.txt
+# expect: reward < 1.0
+
+Copy
+Golden solve.sh must pass (Reward 1.0)
+Restore the real solution and re-run.
+
+git checkout solution/solve.sh
+harbor run -p . --agent oracle
+cat /logs/verifier/reward.txt
+# expect: 1.0
+
+Copy
+Treat reward 1.0 for golden, reward < 1.0 for stub as the bar for moving to the next step. If harbor run -p . --agent nop passes, the verifier is too weak and is scoring a pass without the work being done - tighten the assertions until doing nothing fails.
+
